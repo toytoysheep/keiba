@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>競馬収支管理</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg:       #0f0e0c;
+    --bg2:      #1a1916;
+    --bg3:      #232220;
+    --border:   #2e2c29;
+    --border2:  #3d3b37;
+    --text:     #e8e4dd;
+    --text2:    #8a857c;
+    --text3:    #55524d;
+    --accent:   #c9a84c;
+    --accent2:  #8a6d2a;
+    --green:    #3d9970;
+    --green-bg: rgba(61,153,112,0.12);
+    --red:      #c0392b;
+    --red-bg:   rgba(192,57,43,0.12);
+    --mono:     'DM Mono', monospace;
+    --sans:     'Noto Sans JP', sans-serif;
+    --radius:   8px;
+    --radius-lg: 12px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.6;
+    font-size: 14px;
+  }
+
+  /* ── AUTH ── */
+  #auth-screen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 1rem;
+    background: var(--bg);
+  }
+
+  .auth-wrap {
+    width: 100%;
+    max-width: 360px;
+  }
+
+  .auth-logo {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+
+  .auth-logo .horseshoe {
+    font-size: 48px;
+    display: block;
+    margin-bottom: .5rem;
+  }
+
+  .auth-logo h1 {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    color: var(--accent);
+  }
+
+  .auth-logo p {
+    font-size: 12px;
+    color: var(--text3);
+    margin-top: 4px;
+    font-family: var(--mono);
+  }
+
+  .auth-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+  }
+
+  .auth-card label {
+    display: block;
+    font-size: 11px;
+    color: var(--text2);
+    letter-spacing: .06em;
+    margin-bottom: 6px;
+  }
+
+  .auth-card input[type=password] {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 15px;
+    font-family: var(--mono);
+    outline: none;
+    transition: border-color .15s;
+    margin-bottom: 1rem;
+  }
+
+  .auth-card input[type=password]:focus { border-color: var(--accent); }
+
+  .btn-primary {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    background: var(--accent);
+    color: #0f0e0c;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-weight: 700;
+    font-family: var(--sans);
+    cursor: pointer;
+    transition: background .15s, transform .1s;
+  }
+  .btn-primary:hover { background: #d4b560; }
+  .btn-primary:active { transform: scale(.98); }
+
+  .auth-hint {
+    font-size: 11px;
+    color: var(--text3);
+    text-align: center;
+    margin-top: 1rem;
+  }
+
+  .auth-err {
+    font-size: 12px;
+    color: var(--red);
+    text-align: center;
+    margin-top: .5rem;
+    display: none;
+  }
+
+  /* ── APP ── */
+  #main-app { display: none; }
+
+  header {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 52px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .header-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: .06em;
+  }
+
+  .btn-logout {
+    background: none;
+    border: 1px solid var(--border2);
+    color: var(--text2);
+    padding: 5px 12px;
+    border-radius: var(--radius);
+    font-size: 12px;
+    font-family: var(--sans);
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .btn-logout:hover { border-color: var(--accent2); color: var(--accent); }
+
+  .container { max-width: 900px; margin: 0 auto; padding: 1.5rem 1rem; }
+
+  /* metrics */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 1.5rem;
+  }
+
+  @media (max-width: 480px) {
+    .metrics { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  .metric {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+
+  .metric-label {
+    font-size: 11px;
+    color: var(--text3);
+    letter-spacing: .06em;
+    margin-bottom: 6px;
+    font-family: var(--mono);
+  }
+
+  .metric-value {
+    font-size: 20px;
+    font-weight: 700;
+    font-family: var(--mono);
+    color: var(--text);
+  }
+
+  .metric-value.pos { color: var(--green); }
+  .metric-value.neg { color: var(--red); }
+  .metric-value.gold { color: var(--accent); }
+
+  /* tabs */
+  .tabs {
+    display: flex;
+    gap: 2px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 4px;
+    margin-bottom: 1.5rem;
+    overflow-x: auto;
+  }
+
+  .tab {
+    flex: 1;
+    min-width: 80px;
+    padding: 7px 10px;
+    background: none;
+    border: none;
+    color: var(--text2);
+    font-size: 13px;
+    font-family: var(--sans);
+    cursor: pointer;
+    border-radius: 6px;
+    white-space: nowrap;
+    transition: all .15s;
+  }
+
+  .tab:hover { color: var(--text); background: var(--bg3); }
+
+  .tab.active {
+    background: var(--bg3);
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* form */
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  @media (max-width: 500px) { .form-grid { grid-template-columns: 1fr; } }
+
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+
+  .form-group label {
+    font-size: 11px;
+    color: var(--text2);
+    letter-spacing: .05em;
+    font-family: var(--mono);
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    padding: 9px 12px;
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 14px;
+    font-family: var(--sans);
+    outline: none;
+    transition: border-color .15s;
+  }
+
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus { border-color: var(--accent); }
+
+  .form-group select { appearance: none; cursor: pointer; }
+
+  .form-group textarea { resize: vertical; min-height: 64px; }
+
+  .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .btn-add {
+    padding: 9px 20px;
+    background: var(--accent);
+    color: #0f0e0c;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-weight: 700;
+    font-family: var(--sans);
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .btn-add:hover { background: #d4b560; }
+  .btn-add:active { transform: scale(.98); }
+
+  .btn-ghost {
+    padding: 9px 16px;
+    background: none;
+    border: 1px solid var(--border2);
+    color: var(--text2);
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-family: var(--sans);
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .btn-ghost:hover { border-color: var(--accent2); color: var(--accent); }
+
+  .add-success {
+    text-align: right;
+    font-size: 12px;
+    color: var(--green);
+    font-family: var(--mono);
+    margin-top: 6px;
+    height: 18px;
+  }
+
+  /* table */
+  .filter-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+
+  .filter-row label {
+    font-size: 12px;
+    color: var(--text2);
+    font-family: var(--mono);
+  }
+
+  .filter-row select {
+    padding: 6px 10px;
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 13px;
+    font-family: var(--sans);
+    outline: none;
+  }
+
+  .table-wrap { overflow-x: auto; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  th {
+    text-align: left;
+    padding: 8px 12px;
+    color: var(--text3);
+    font-weight: 400;
+    font-size: 11px;
+    letter-spacing: .05em;
+    font-family: var(--mono);
+    border-bottom: 1px solid var(--border);
+  }
+
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: middle;
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg2); }
+
+  .gain { color: var(--green); font-family: var(--mono); }
+  .loss { color: var(--red); font-family: var(--mono); }
+  .mono { font-family: var(--mono); }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: var(--mono);
+    background: var(--bg3);
+    color: var(--text2);
+    border: 1px solid var(--border);
+  }
+
+  .del-btn {
+    background: none;
+    border: none;
+    color: var(--text3);
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 4px;
+    font-size: 16px;
+    transition: all .15s;
+  }
+  .del-btn:hover { color: var(--red); background: var(--red-bg); }
+
+  .empty {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text3);
+    font-size: 13px;
+    font-family: var(--mono);
+  }
+
+  /* charts */
+  .chart-section { margin-bottom: 2rem; }
+  .chart-title {
+    font-size: 12px;
+    color: var(--text2);
+    font-family: var(--mono);
+    letter-spacing: .06em;
+    margin-bottom: 10px;
+  }
+
+  .chart-wrap {
+    position: relative;
+    width: 100%;
+    height: 240px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+
+  /* settings */
+  .settings-section {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .settings-title {
+    font-size: 12px;
+    color: var(--text2);
+    font-family: var(--mono);
+    letter-spacing: .06em;
+    margin-bottom: 1rem;
+  }
+
+  .settings-section input[type=password] {
+    padding: 9px 12px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 14px;
+    font-family: var(--mono);
+    outline: none;
+    width: 100%;
+    max-width: 280px;
+    margin-bottom: 10px;
+    display: block;
+    transition: border-color .15s;
+  }
+  .settings-section input[type=password]:focus { border-color: var(--accent); }
+
+  .pw-msg { font-size: 12px; margin-top: 8px; font-family: var(--mono); }
+
+  .danger-btn {
+    padding: 9px 16px;
+    background: none;
+    border: 1px solid var(--red);
+    color: var(--red);
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-family: var(--sans);
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .danger-btn:hover { background: var(--red-bg); }
+
+  .card-section {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .legend {
+    display: flex;
+    gap: 16px;
+    margin-top: 10px;
+    font-size: 11px;
+    color: var(--text2);
+    font-family: var(--mono);
+  }
+
+  .legend span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth-screen">
+  <div class="auth-wrap">
+    <div class="auth-logo">
+      <span class="horseshoe">🐴</span>
+      <h1>KEIBA TRACKER</h1>
+      <p>競馬収支管理システム</p>
+    </div>
+    <div class="auth-card">
+      <label>PASSWORD</label>
+      <input type="password" id="pw-input" placeholder="パスワードを入力" />
+      <button class="btn-primary" onclick="doLogin()">ログイン</button>
+      <p class="auth-hint">初回は好きなパスワードを設定してください</p>
+      <p class="auth-err" id="auth-err">パスワードが違います</p>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="main-app">
+  <header>
+    <span class="header-title">🐴 KEIBA TRACKER</span>
+    <button class="btn-logout" onclick="doLogout()">ログアウト</button>
+  </header>
+
+  <div class="container">
+
+    <!-- Metrics -->
+    <div class="metrics" id="metrics"></div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('record',this)">＋ 入力</button>
+      <button class="tab" onclick="switchTab('history',this)">📋 記録</button>
+      <button class="tab" onclick="switchTab('chart',this)">📊 グラフ</button>
+      <button class="tab" onclick="switchTab('settings',this)">⚙ 設定</button>
+    </div>
+
+    <!-- Panel: Record -->
+    <div id="panel-record" class="panel active">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>DATE 日付</label>
+          <input type="date" id="f-date" />
+        </div>
+        <div class="form-group">
+          <label>RACE レース名</label>
+          <input type="text" id="f-race" placeholder="例：日本ダービー" />
+        </div>
+        <div class="form-group">
+          <label>TYPE 馬券種別</label>
+          <select id="f-type">
+            <option>単勝</option><option>複勝</option><option>馬連</option>
+            <option>馬単</option><option>ワイド</option><option>三連複</option>
+            <option>三連単</option><option>WIN5</option><option>その他</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>VENUE 競馬場</label>
+          <select id="f-venue">
+            <option>東京</option><option>中山</option><option>阪神</option><option>京都</option>
+            <option>中京</option><option>新潟</option><option>福島</option><option>小倉</option>
+            <option>函館</option><option>札幌</option><option>その他</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>INVEST 投資額（円）</label>
+          <input type="number" id="f-invest" placeholder="1000" min="0" />
+        </div>
+        <div class="form-group">
+          <label>RETURN 払戻額（円）</label>
+          <input type="number" id="f-return" placeholder="0" min="0" />
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label>MEMO メモ</label>
+        <textarea id="f-memo" placeholder="自由記入欄（馬名・レース展望など）"></textarea>
+      </div>
+      <div class="form-actions">
+        <button class="btn-ghost" onclick="clearForm()">クリア</button>
+        <button class="btn-add" onclick="addRecord()">記録する</button>
+      </div>
+      <div class="add-success" id="add-msg"></div>
+    </div>
+
+    <!-- Panel: History -->
+    <div id="panel-history" class="panel">
+      <div class="filter-row">
+        <label>月</label>
+        <select id="filter-month" onchange="renderHistory()">
+          <option value="">すべて</option>
+        </select>
+        <label>種別</label>
+        <select id="filter-type" onchange="renderHistory()">
+          <option value="">すべて</option>
+          <option>単勝</option><option>複勝</option><option>馬連</option>
+          <option>馬単</option><option>ワイド</option><option>三連複</option>
+          <option>三連単</option><option>WIN5</option><option>その他</option>
+        </select>
+      </div>
+      <div class="card-section">
+        <div class="table-wrap" id="history-wrap"></div>
+      </div>
+    </div>
+
+    <!-- Panel: Chart -->
+    <div id="panel-chart" class="panel">
+      <div class="chart-section">
+        <div class="chart-title">CUMULATIVE P&L — 累計収支推移</div>
+        <div class="chart-wrap"><canvas id="chart-cum" aria-label="累計収支グラフ">累計収支の推移</canvas></div>
+      </div>
+      <div class="chart-section">
+        <div class="chart-title">MONTHLY — 月別 投資 / 払戻</div>
+        <div class="chart-wrap"><canvas id="chart-bar" aria-label="月別投資払戻グラフ">月別の投資額と払戻額</canvas></div>
+        <div class="legend">
+          <span><span class="legend-dot" style="background:#6b8fa3"></span>投資額</span>
+          <span><span class="legend-dot" style="background:#3d9970"></span>払戻額</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel: Settings -->
+    <div id="panel-settings" class="panel">
+      <div class="settings-section">
+        <div class="settings-title">PASSWORD — パスワード変更</div>
+        <input type="password" id="pw-old" placeholder="現在のパスワード" />
+        <input type="password" id="pw-new" placeholder="新しいパスワード" />
+        <button class="btn-ghost" onclick="changePw()">変更する</button>
+        <p class="pw-msg" id="pw-msg"></p>
+      </div>
+      <div class="settings-section">
+        <div class="settings-title">DATA — データ管理</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn-ghost" onclick="exportCSV()">CSVエクスポート</button>
+          <button class="danger-btn" onclick="if(confirm('全データを削除します。元に戻せません。よろしいですか？'))clearAll()">全データ削除</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /container -->
+</div><!-- /main-app -->
+
+<script>
+const RKEY = 'keiba_records_v1';
+const PKEY = 'keiba_password_v1';
+let records = [];
+let charts = {};
+
+/* ── Auth ── */
+function doLogin() {
+  const input = document.getElementById('pw-input').value.trim();
+  if (!input) return;
+  const stored = localStorage.getItem(PKEY);
+  if (stored === null) {
+    localStorage.setItem(PKEY, input);
+    bootApp();
+  } else if (input === stored) {
+    bootApp();
+  } else {
+    document.getElementById('auth-err').style.display = 'block';
+  }
+}
+
+document.getElementById('pw-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+function doLogout() {
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('main-app').style.display = 'none';
+  document.getElementById('pw-input').value = '';
+  document.getElementById('auth-err').style.display = 'none';
+}
+
+function bootApp() {
+  records = JSON.parse(localStorage.getItem(RKEY) || '[]');
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('main-app').style.display = 'block';
+  document.getElementById('f-date').value = new Date().toISOString().slice(0, 10);
+  renderAll();
+}
+
+/* ── Tabs ── */
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('panel-' + name).classList.add('active');
+  if (name === 'chart') setTimeout(renderCharts, 50);
+}
+
+/* ── Records ── */
+function saveData() {
+  localStorage.setItem(RKEY, JSON.stringify(records));
+}
+
+function addRecord() {
+  const d = document.getElementById('f-date').value;
+  const invest = parseFloat(document.getElementById('f-invest').value) || 0;
+  const ret = parseFloat(document.getElementById('f-return').value) || 0;
+  if (!d || invest <= 0) {
+    alert('日付と投資額を入力してください');
+    return;
+  }
+  records.push({
+    id: Date.now(),
+    date: d,
+    race: document.getElementById('f-race').value.trim(),
+    type: document.getElementById('f-type').value,
+    venue: document.getElementById('f-venue').value,
+    invest, ret,
+    profit: ret - invest,
+    memo: document.getElementById('f-memo').value.trim()
+  });
+  records.sort((a, b) => a.date.localeCompare(b.date));
+  saveData();
+  renderAll();
+  clearForm();
+  const msg = document.getElementById('add-msg');
+  msg.textContent = '✓ 記録しました';
+  setTimeout(() => msg.textContent = '', 2500);
+}
+
+function clearForm() {
+  ['f-race', 'f-invest', 'f-return', 'f-memo'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-date').value = new Date().toISOString().slice(0, 10);
+}
+
+function deleteRecord(id) {
+  if (!confirm('この記録を削除しますか？')) return;
+  records = records.filter(r => r.id !== id);
+  saveData();
+  renderAll();
+}
+
+/* ── Render ── */
+function renderAll() {
+  renderMetrics();
+  renderHistory();
+  updateMonthFilter();
+}
+
+function renderMetrics() {
+  const ti = records.reduce((s, r) => s + r.invest, 0);
+  const tr = records.reduce((s, r) => s + r.ret, 0);
+  const profit = tr - ti;
+  const roi = ti > 0 ? (tr / ti * 100) : 0;
+  const hitRate = records.length > 0
+    ? Math.round(records.filter(r => r.ret > 0).length / records.length * 100)
+    : 0;
+  const profitCls = profit > 0 ? 'pos' : profit < 0 ? 'neg' : '';
+  const roiCls = roi >= 100 ? 'pos' : 'neg';
+  document.getElementById('metrics').innerHTML = `
+    <div class="metric">
+      <div class="metric-label">INVEST</div>
+      <div class="metric-value">¥${ti.toLocaleString()}</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">RETURN</div>
+      <div class="metric-value">¥${tr.toLocaleString()}</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">P&amp;L</div>
+      <div class="metric-value ${profitCls}">${profit >= 0 ? '+' : ''}¥${profit.toLocaleString()}</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">ROI</div>
+      <div class="metric-value ${roiCls}">${roi.toFixed(1)}%</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">RACES</div>
+      <div class="metric-value gold">${records.length}</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">HIT RATE</div>
+      <div class="metric-value">${hitRate}%</div>
+    </div>
+  `;
+}
+
+function updateMonthFilter() {
+  const months = [...new Set(records.map(r => r.date.slice(0, 7)))].sort().reverse();
+  const sel = document.getElementById('filter-month');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">すべて</option>' + months.map(m => `<option value="${m}">${m}</option>`).join('');
+  if (months.includes(cur)) sel.value = cur;
+}
+
+function renderHistory() {
+  const fm = document.getElementById('filter-month').value;
+  const ft = document.getElementById('filter-type').value;
+  const filtered = [...records]
+    .filter(r => (!fm || r.date.startsWith(fm)) && (!ft || r.type === ft))
+    .reverse();
+  const wrap = document.getElementById('history-wrap');
+  if (!filtered.length) {
+    wrap.innerHTML = '<p class="empty">— 記録がありません —</p>';
+    return;
+  }
+  wrap.innerHTML = `<table>
+    <thead><tr>
+      <th>DATE</th><th>RACE</th><th>TYPE</th><th>INVEST</th><th>RETURN</th><th>P&amp;L</th><th></th>
+    </tr></thead>
+    <tbody>${filtered.map(r => `
+      <tr>
+        <td class="mono" style="font-size:12px">${r.date}</td>
+        <td title="${r.memo || ''}">${r.race || '—'}</td>
+        <td><span class="badge">${r.type}</span></td>
+        <td class="mono">¥${r.invest.toLocaleString()}</td>
+        <td class="mono">¥${r.ret.toLocaleString()}</td>
+        <td class="${r.profit > 0 ? 'gain' : r.profit < 0 ? 'loss' : 'mono'}">
+          ${r.profit >= 0 ? '+' : ''}¥${r.profit.toLocaleString()}
+        </td>
+        <td><button class="del-btn" onclick="deleteRecord(${r.id})" title="削除">✕</button></td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+/* ── Charts ── */
+function renderCharts() {
+  if (!records.length) return;
+
+  // cumulative
+  const sorted = [...records].sort((a, b) => a.date.localeCompare(b.date));
+  let cum = 0;
+  const cumLabels = sorted.map(r => r.date);
+  const cumData = sorted.map(r => { cum += r.profit; return cum; });
+
+  if (charts.cum) charts.cum.destroy();
+  charts.cum = new Chart(document.getElementById('chart-cum'), {
+    type: 'line',
+    data: {
+      labels: cumLabels,
+      datasets: [{
+        data: cumData,
+        borderColor: '#c9a84c',
+        backgroundColor: 'rgba(201,168,76,0.07)',
+        fill: true,
+        tension: 0.35,
+        pointRadius: sorted.length > 40 ? 0 : 3,
+        pointBackgroundColor: '#c9a84c',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          ticks: { maxTicksLimit: 8, color: '#55524d', font: { size: 10, family: 'DM Mono' } },
+          grid: { color: 'rgba(255,255,255,0.04)' }
+        },
+        y: {
+          ticks: {
+            color: '#55524d',
+            font: { size: 10, family: 'DM Mono' },
+            callback: v => (v >= 0 ? '+' : '') + '¥' + v.toLocaleString()
+          },
+          grid: { color: 'rgba(255,255,255,0.04)' }
+        }
+      }
+    }
+  });
+
+  // monthly bar
+  const map = {};
+  records.forEach(r => {
+    const m = r.date.slice(0, 7);
+    if (!map[m]) map[m] = { i: 0, r: 0 };
+    map[m].i += r.invest;
+    map[m].r += r.ret;
+  });
+  const months = Object.keys(map).sort();
+
+  if (charts.bar) charts.bar.destroy();
+  charts.bar = new Chart(document.getElementById('chart-bar'), {
+    type: 'bar',
+    data: {
+      labels: months,
+      datasets: [
+        {
+          label: '投資額',
+          data: months.map(m => map[m].i),
+          backgroundColor: 'rgba(107,143,163,0.6)',
+          borderWidth: 0,
+          borderRadius: 3
+        },
+        {
+          label: '払戻額',
+          data: months.map(m => map[m].r),
+          backgroundColor: 'rgba(61,153,112,0.75)',
+          borderWidth: 0,
+          borderRadius: 3
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          ticks: {
+            color: '#55524d',
+            font: { size: 10, family: 'DM Mono' },
+            autoSkip: false,
+            maxRotation: 45
+          },
+          grid: { display: false }
+        },
+        y: {
+          ticks: {
+            color: '#55524d',
+            font: { size: 10, family: 'DM Mono' },
+            callback: v => '¥' + v.toLocaleString()
+          },
+          grid: { color: 'rgba(255,255,255,0.04)' }
+        }
+      }
+    }
+  });
+}
+
+/* ── Settings ── */
+function changePw() {
+  const old = document.getElementById('pw-old').value;
+  const nw = document.getElementById('pw-new').value.trim();
+  const msg = document.getElementById('pw-msg');
+  const stored = localStorage.getItem(PKEY);
+  if (old !== stored) {
+    msg.textContent = '✕ 現在のパスワードが違います';
+    msg.style.color = '#c0392b';
+  } else if (!nw) {
+    msg.textContent = '✕ 新しいパスワードを入力してください';
+    msg.style.color = '#c0392b';
+  } else {
+    localStorage.setItem(PKEY, nw);
+    msg.textContent = '✓ パスワードを変更しました';
+    msg.style.color = '#3d9970';
+    document.getElementById('pw-old').value = '';
+    document.getElementById('pw-new').value = '';
+  }
+  msg.style.display = 'block';
+}
+
+function exportCSV() {
+  const rows = [['日付', 'レース名', '馬券種別', '競馬場', '投資額', '払戻額', '収支', 'メモ']];
+  records.forEach(r => rows.push([r.date, r.race, r.type, r.venue, r.invest, r.ret, r.profit, r.memo]));
+  const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,\ufeff' + encodeURIComponent(csv);
+  a.download = `keiba_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+}
+
+function clearAll() {
+  records = [];
+  saveData();
+  renderAll();
+}
+</script>
+</body>
+</html>
