@@ -1,0 +1,22 @@
+{
+  "name": "競馬収支管理",
+  "short_name": "競馬収支",
+  "description": "競馬の収支を記録・管理するアプリ",
+  "start_url": "/keiba/",
+  "display": "standalone",
+  "background_color": "#0f0e0c",
+  "theme_color": "#0f0e0c",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
