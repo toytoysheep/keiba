@@ -664,6 +664,9 @@
             <div class="metric"><div class="metric-label">INVEST</div><div class="metric-value" id="ps-invest">—</div></div>
             <div class="metric"><div class="metric-label">RETURN</div><div class="metric-value" id="ps-return">—</div></div>
             <div class="metric"><div class="metric-label">P&L</div><div class="metric-value" id="ps-pl">—</div></div>
+            <div class="metric"><div class="metric-label">ROI</div><div class="metric-value" id="ps-roi">—</div></div>
+            <div class="metric"><div class="metric-label">RACES</div><div class="metric-value" id="ps-races">—</div></div>
+            <div class="metric"><div class="metric-label">HIT RATE</div><div class="metric-value" id="ps-hit">—</div></div>
           </div>
         </div>
         <div class="chart-wrap" id="period-chart-wrap" style="display:none">
@@ -1082,12 +1085,22 @@ function renderPeriodChart() {
   const ti = filtered.reduce((s, r) => s + r.invest, 0);
   const tr = filtered.reduce((s, r) => s + r.ret, 0);
   const pl = tr - ti;
+  const roi = ti > 0 ? (tr / ti * 100) : 0;
+  const hits = filtered.filter(r => r.ret > 0).length;
+  const hitRate = filtered.length > 0 ? Math.round(hits / filtered.length * 100) : 0;
+
   document.getElementById('ps-invest').textContent = '¥' + ti.toLocaleString();
   document.getElementById('ps-invest').className = 'metric-value';
   document.getElementById('ps-return').textContent = '¥' + tr.toLocaleString();
   document.getElementById('ps-return').className = 'metric-value';
   document.getElementById('ps-pl').textContent = (pl >= 0 ? '+' : '') + '¥' + pl.toLocaleString();
   document.getElementById('ps-pl').className = 'metric-value ' + (pl > 0 ? 'pos' : pl < 0 ? 'neg' : '');
+  document.getElementById('ps-roi').textContent = roi.toFixed(1) + '%';
+  document.getElementById('ps-roi').className = 'metric-value ' + (roi >= 100 ? 'pos' : 'neg');
+  document.getElementById('ps-races').textContent = filtered.length;
+  document.getElementById('ps-races').className = 'metric-value gold';
+  document.getElementById('ps-hit').textContent = hitRate + '%';
+  document.getElementById('ps-hit').className = 'metric-value';
 
   let cum = 0;
   const labels = filtered.map(r => r.date);
